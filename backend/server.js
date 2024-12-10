@@ -48,6 +48,30 @@ app.get('/users', (req, res) => {
     });
 });
 
+// Lấy user theo id
+app.get('/users/:id', (req, res) => {
+
+    const { id } = req.params; // lấy từ đường dẫn
+    console.log('ID:', req.params);
+
+    // Câu lệnh SQL để xóa user theo ID
+    const query = 'Select * FROM users WHERE id = ?';
+
+    // Thực hiện truy vấn MySQL
+    db.query(query, [id], (err, result) => {
+        if (err) {
+            console.error('Lỗi khi lấy user:', err);
+            res.status(500).json({ message: 'Lỗi server. Không thể lấy user.' });
+        } else if (result.affectedRows === 0) {
+            // Nếu không có hàng nào bị ảnh hưởng, nghĩa là user không tồn tại
+            res.status(404).json({ message: 'User không tồn tại.' });
+        } else {
+            // Trả về thông tin người dùng
+            res.status(200).json(result[0]); // result[0] vì result là một mảng, lấy phần tử đầu tiên
+        }
+    });
+});
+
 // Xóa user theo id
 app.delete('/users/:id', (req, res) => {
    
@@ -74,7 +98,7 @@ app.delete('/users/:id', (req, res) => {
 // Endpoint PUT để cập nhật thông tin người dùng
 app.put('/users/:userId', upload.single('avatar'), (req, res) => {
     const userId = req.params.userId; // Lấy userId từ URL
-    const { password } = req.body;   // Lấy mật khẩu mới từ body
+    const { password, email, birthday } = req.body;   // Lấy mật khẩu mới từ body
     const avatar = req.file ? req.file.filename : null; // Lấy tên file avatar nếu có
     console.log(' req.params.userId:', req.params.userId);
     console.log(' password:', req.body);
@@ -104,6 +128,14 @@ app.put('/users/:userId', upload.single('avatar'), (req, res) => {
             updateFields.push('avatar = ?');
             updateValues.push(avatar);
         }
+        if (email) {
+            updateFields.push('email = ?');
+            updateValues.push(email);
+        }
+        if (birthday) {
+            updateFields.push('birthday = ?');
+            updateValues.push(birthday);
+        }
 
         if (updateFields.length === 0) {
             return res.status(400).json({ success: false, message: 'Không có dữ liệu để cập nhật' });
@@ -126,7 +158,7 @@ app.put('/users/:userId', upload.single('avatar'), (req, res) => {
 
 // insert (post)
 app.post('/register', upload.single('avatar'), (req, res) =>{
-    const { username, password } = req.body;
+    const { username, password, email, birthday } = req.body;
     
     const avatar = req.file ? req.file.filename : 'default.png'; 
     
@@ -144,8 +176,8 @@ app.post('/register', upload.single('avatar'), (req, res) =>{
             return res.json({ success: false, message: 'Tài khoản đã tồn tại' });
         }
         // Nếu chưa có theem mới
-        const insertquery = 'INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)';
-        db.query(insertquery, [username, password, avatar], (err, kq) => {
+        const insertquery = 'INSERT INTO users (username, password, avatar, email, birthday) VALUES (?, ?, ?, ?, ?)';
+        db.query(insertquery, [username, password, avatar, email, birthday], (err, kq) => {
         if (err) throw err;
         res.json({ success: true, message: 'Đã thêm người dùng' });
     });
